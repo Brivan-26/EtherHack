@@ -9,10 +9,11 @@
 > NOTE: All challenges' smart contracts code are upgraded to v0.8.20. This does not affect at all the challenges behavior
 
 ### Useful commands for all challenges
-`forge compile`: Compile smart contracts
-`forge test`: Run tests for challenges solution
-`forge test -vvv`: Run tests for challenges with tracers enabled (recommended for all challenges, to output the logs of the states before and after the exploit)
-
+```shell
+forge compile: Compile smart contracts
+forge test: Run tests for challenges solution
+forge test -vvv: Run tests for challenges with tracers enabled (recommended for all challenges, to output the logs of the states before and after the exploit)
+```
 ## Challenges
 
 1. [Azino 777](#01---azino777)
