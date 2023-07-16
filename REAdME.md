@@ -17,6 +17,7 @@ forge test -vvv: Run tests for challenges with tracers enabled (recommended for 
 ## Challenges
 
 1. [Azino 777](#01---azino777)
+2. [Private Ryan](#02---private-ryan)
    
 ## 01 - Azino777
 
@@ -67,3 +68,30 @@ contract AzzinoHack {
 }
 ```
 [Attack contract](./src/Azino777.sol) | [Tests](./test/Azino777.t.sol)
+
+## 02 - Private Ryan
+
+This challenge follows the same logic as the previous one (so, we should follow the same exploit ;)). However, one factor is added to the calculation of the *random number*:
+```solidity
+uint256 blockNumber = block.number - seed;
+```
+If we check the `Private Ryan` contract, we will notice that `seed` is a private variable, initially initialized in the constructor:
+```solidity
+uint private seed = 1;
+
+  constructor() {
+    seed = rand(256);
+  }
+```
+For us to determine the *random number*, we should get first the value of the private variable `seed`. <br />
+This challenge shows the importance of **understanding the meaning of variable visibility modifier**. Variable visibility is set to `private` **does not mean that no one can read the value of it**, it means that **other contracts can not access it**. Anyone outside the blockchain can easily determine which `slot` the variable's value leave in, and then query the contract's storage layout to get the `slot` value.<br />
+> If you don't know the storage layout and accessing private data, I suggest [reading my previous notes about it](https://github.com/Brivan-26/smart-contract-security/tree/master/Accessing-Private-Data)
+
+It's obvious that the `seed` variable is taking the `slot 0`, so just before calculating the *random number*, we query the `slot 0 ` to get the `seed`'s value. E.g. using the Foundry framework
+```solidity
+bytes32 seed = vm.load(address(privateRyan), bytes32(uint256(0)));
+hack.attack(uint256(seed));
+```
+[Hack contract](./src/PrivateRyan.sol) | [Tests](./test/PrivateRyan.t.sol)
+
+> ***IMPORTANT NOTE***: when attempting to run the test, it may fail due to `arithmetic underflow`. That is because `block.number - seed` will generate a negative number because block.number initially is 1 when running the test, and the seed value is surely greater. Run the tests by setting the block number greater than 256. E.g: `forge test --match-path test/PrivateRyan.t.sol --block-number 500 -vvv`
