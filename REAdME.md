@@ -95,3 +95,27 @@ hack.attack(uint256(seed));
 [Hack contract](./src/PrivateRyan.sol) | [Tests](./test/PrivateRyan.t.sol)
 
 > ***IMPORTANT NOTE***: when attempting to run the test, it may fail due to `arithmetic underflow`. That is because `block.number - seed` will generate a negative number because block.number initially is 1 when running the test, and the seed value is surely greater. Run the tests by setting the block number greater than 256. E.g: `forge test --match-path test/PrivateRyan.t.sol --block-number 500 -vvv`
+# 03 - Wheel of Fortune
+
+From a first look, this challenge looks like somehow we need to predict the hash of a future block:
+```solidity
+if (gameId > 0) {
+    uint lastGameId = gameId - 1;
+    uint num = rand(block.blockhash(games[lastGameId].blockNumber), 100);
+    if(num == games[lastGameId].bet) {
+        games[lastGameId].player.transfer(this.balance);
+    }
+}
+```
+We can see that with each player comes, he checks if the last player's bet is correct and if so, the last player will be rewarded... from here comes the challenge's hint *This lottery uses blockhash of a future block, try to beat it!*. <br />
+However, the check we just spoke about is badly designed, and we can abuse it as follows: we know that the blockhash of the current block is always 0 (the block that contains our TX is not yet generated), so we can send two transactions in a row, and guess what... similar to the last challenge's idea, **they will be mined in the same block**. The first transaction is to set our bet, and the second is to validate our bet.
+```solidity
+function attack() external payable {
+    require(msg.value >= 0.02 ether, "Not enough ether to perform attack");
+    uint bet = uint256(keccak256(abi.encodePacked(blockhash(block.number)))) % 100;
+    target.spin{value: 0.01 ether}(bet);
+    target.spin{value: 0.01 ether}(bet);
+}
+```
+Another approach to solve the challenge is by waiting for **256 blocks** after our bet transaction, that is because according to [Solidity documentation](https://docs.soliditylang.org/en/v0.8.20/units-and-global-variables.html#block-and-transaction-properties): `blockhash(uint blockNumber) returns (bytes32): hash of the given block when blocknumber is one of the 256 most recent blocks; otherwise returns zero`. However, this approach is harder to follow, and it requires designing a bot to keep watching the network, we will stick with the first approach (the smartest :V).
+[Attack contract](./src/WheelOfFortune.sol) | [Tests](./test/WheelOfFortune.t.sol)
