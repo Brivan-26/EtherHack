@@ -18,6 +18,7 @@ forge test -vvv: Run tests for challenges with tracers enabled (recommended for 
 
 1. [Azino 777](#01---azino777)
 2. [Private Ryan](#02---private-ryan)
+3. [Weel Of Fortune](#03---wheel-of-fortune)   
    
 ## 01 - Azino777
 
